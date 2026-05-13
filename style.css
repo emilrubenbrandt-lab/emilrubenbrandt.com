@@ -1,0 +1,76 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    font-weight: normal;
+    font-style: normal;
+    background-color: #ffffff;
+    color: #000000;
+    line-height: 1.6;
+}
+
+header {
+    text-align: center;
+    padding: 8vh 5vw;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+header p {
+    font-size: 16px;
+    letter-spacing: 0.02em;
+}
+
+main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 5vw 10vh;
+}
+
+figure {
+    margin: 12vh 0;
+    text-align: center;
+}
+
+figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+figcaption {
+    font-size: 14px;
+    margin-top: 3vh;
+    text-align: center;
+    opacity: 0.7;
+}
+
+footer {
+    text-align: center;
+    padding: 6vh 5vw 8vh;
+    font-size: 14px;
+    opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+    header {
+        padding: 6vh 8vw;
+    }
+    
+    header p {
+        font-size: 14px;
+    }
+    
+    figure {
+        margin: 8vh 0;
+    }
+    
+    main {
+        padding: 0 8vw 8vh;
+    }
+}
