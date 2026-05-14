@@ -18,17 +18,44 @@
         <p><a href="mailto:emilrubenbrandt@gmail.com">emilrubenbrandt@gmail.com</a></p>
     </header>
     <main>
-        <figure>
-            <img src="images/Bild 6.jpg" alt="">
-        </figure>
+         <figure>
+             <img src="images/Bild 6.jpg" alt="">
+         </figure>
 
-        <figure>
-            <img src="images/Bild 6 (1).jpg" alt="">
-        </figure>
+         <figure>
+             <img src="images/Bild 6 (1).jpg" alt="">
+         </figure>
 
     </main>
     <footer>
         <p>© Emil Ruben Brandt</p>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const images = document.querySelectorAll('figure img');
+            
+            images.forEach(img => {
+                const checkFormat = () => {
+                    const ratio = img.naturalWidth / img.naturalHeight;
+                    
+                    // Wenn breiter als hoch: Querformat
+                    if (ratio > 1) {
+                        img.dataset.format = 'landscape';
+                    } else {
+                        img.dataset.format = 'portrait';
+                    }
+                };
+                
+                // Falls Bild bereits geladen ist
+                if (img.complete) {
+                    checkFormat();
+                } else {
+                    // Warten bis Bild geladen ist
+                    img.addEventListener('load', checkFormat);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
