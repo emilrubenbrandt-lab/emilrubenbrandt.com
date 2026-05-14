@@ -1,31 +1,12 @@
-# Portfolio Sync - Kurzanleitung
+Sync-Script ausführen
 
-## Setup ist fertig! ✅
-
-Dein Portfolio-Repo liegt in: ~/Portfolio-Repo
-
-## So lädst du Bilder hoch:
-
-1. **Bilder in Google Drive hochladen:**
-   - Öffne Google Drive (Finder oder Browser)
-   - Gehe zu: Meine Ablage > emilrubenbrandt.com > images
-   - Ziehe deine Bilder rein (z.B. strand.jpg, portrait.jpg)
-   - Warte 5-10 Sek bis Drive synct
-
-2. **Sync-Script ausführen:**
-   Öffne Terminal und tippe:
+Öffne Terminal und tippe:
    
-   cd ~/Portfolio-Repo
-   ./sync-portfolio.sh
+ cd ~/Portfolio-Repo
+ ./sync-portfolio.sh
 
-3. **Fertig!**
-   Das Script:
-   - Kopiert neue Bilder ins Repo
-   - Fügt <figure> Blöcke in index.html ein
-   - Committed & pusht zu GitHub
-   - Nach 1-2 Min ist alles live auf www.emilrubenbrandt.com
 
-## Titel nachträglich hinzufügen:
+Titel nachträglich hinzufügen
 
 Öffne index.html und füge zwischen <figure> und </figure> hinzu:
 
@@ -36,12 +17,10 @@ git add index.html
 git commit -m "Titel hinzugefügt"
 git push origin main
 
-## Dateien in ~/Portfolio-Repo:
+Dateien in ~/Portfolio-Repo:
 
 - index.html         (Deine Webseite)
 - style.css          (Styling)
 - favicon.svg        (Favicon)
 - sync-portfolio.sh  (Das Sync-Script)
 - images/            (Deine Fotos)
-
-Viel Erfolg!

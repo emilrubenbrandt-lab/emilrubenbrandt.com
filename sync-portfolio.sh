@@ -1,66 +1,30 @@
 #!/bin/bash
 #
 # Portfolio Sync Script
-# Synct Bilder von Google Drive → GitHub Portfolio
-# 
-# Usage: ./sync-portfolio.sh
+# Synct Bilder von Google Drive -> GitHub Portfolio
+# Fuegt neue Bilder hinzu, entfernt geloeschte Bilder
 #
 
-set -e  # Stop bei Fehler
-
-# ============ KONFIGURATION ============
-
-# Lokaler Google Drive Pfad (passe an falls anders)
-# Neue Drive App:
 DRIVE_IMAGES="$HOME/Library/CloudStorage/GoogleDrive-emilrubenbrandt@gmail.com/Meine Ablage/emilrubenbrandt.com/images"
-# Alte Drive App (falls du die nutzt):
-# DRIVE_IMAGES="$HOME/Google Drive/emilrubenbrandt.com/images"
-
-# Git Repo Pfad (passe an wo dein Repo liegt)
 REPO_PATH="$HOME/Portfolio-Repo"
 REPO_IMAGES="$REPO_PATH/images"
 INDEX_HTML="$REPO_PATH/index.html"
-
-# Git Remote
 REMOTE="origin"
 BRANCH="main"
 
-# ============ SCRIPT START ============
-
-echo "🚀 Portfolio Sync gestartet..."
+echo ""
+echo "Portfolio Sync gestartet..."
 echo ""
 
-# Prüfe ob Drive-Ordner existiert
 if [ ! -d "$DRIVE_IMAGES" ]; then
-    echo "❌ Fehler: Google Drive Ordner nicht gefunden:"
+    echo "Fehler: Google Drive Ordner nicht gefunden:"
     echo "   $DRIVE_IMAGES"
-    echo ""
-    echo "💡 Passe DRIVE_IMAGES im Script an!"
     exit 1
 fi
 
-# Prüfe ob Repo existiert
-if [ ! -d "$REPO_PATH" ]; then
-    echo "❌ Fehler: Git Repo nicht gefunden:"
-    echo "   $REPO_PATH"
-    echo ""
-    echo "💡 Passe REPO_PATH im Script an!"
-    exit 1
-fi
-
-# Wechsle ins Repo
 cd "$REPO_PATH"
 
-# Zähle Bilder in Drive
-DRIVE_COUNT=$(find "$DRIVE_IMAGES" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | wc -l | tr -d ' ')
-echo "📁 Google Drive: $DRIVE_COUNT Bilder gefunden"
-
-# Zähle Bilder im Repo
-REPO_COUNT=$(find "$REPO_IMAGES" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) 2>/dev/null | wc -l | tr -d ' ')
-echo "📦 Git Repo: $REPO_COUNT Bilder vorhanden"
-echo ""
-
-# Finde neue Bilder
+# Neue Bilder finden (in Drive, noch nicht im Repo)
 NEW_IMAGES=()
 while IFS= read -r -d '' file; do
     filename=$(basename "$file")
@@ -69,73 +33,99 @@ while IFS= read -r -d '' file; do
     fi
 done < <(find "$DRIVE_IMAGES" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0)
 
-# Wenn keine neuen Bilder
-if [ ${#NEW_IMAGES[@]} -eq 0 ]; then
-    echo "✅ Keine neuen Bilder zum Synchronisieren"
+# Geloeschte Bilder finden (im Repo, nicht mehr in Drive)
+REMOVED_IMAGES=()
+if [ -d "$REPO_IMAGES" ]; then
+    while IFS= read -r -d '' file; do
+        filename=$(basename "$file")
+        if [ ! -f "$DRIVE_IMAGES/$filename" ]; then
+            REMOVED_IMAGES+=("$filename")
+        fi
+    done < <(find "$REPO_IMAGES" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0)
+fi
+
+# Nichts zu tun
+if [ ${#NEW_IMAGES[@]} -eq 0 ] && [ ${#REMOVED_IMAGES[@]} -eq 0 ]; then
+    echo "Alles aktuell, nichts zu synchronisieren."
+    echo ""
     exit 0
 fi
 
-# Zeige neue Bilder
-echo "🆕 ${#NEW_IMAGES[@]} neue(s) Bild(er) gefunden:"
-for img in "${NEW_IMAGES[@]}"; do
-    echo "   • $img"
-done
-echo ""
+if [ ${#NEW_IMAGES[@]} -gt 0 ]; then
+    echo "Neue Bilder (${#NEW_IMAGES[@]}):"
+    for img in "${NEW_IMAGES[@]}"; do echo "   + $img"; done
+    echo ""
+fi
 
-# Kopiere neue Bilder
-echo "📋 Kopiere Bilder ins Repo..."
+if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then
+    echo "Zu entfernen (${#REMOVED_IMAGES[@]}):"
+    for img in "${REMOVED_IMAGES[@]}"; do echo "   - $img"; done
+    echo ""
+fi
+
+# Neue Bilder kopieren
 for img in "${NEW_IMAGES[@]}"; do
     cp "$DRIVE_IMAGES/$img" "$REPO_IMAGES/$img"
-    echo "   ✓ $img"
+    echo "Kopiert: $img"
 done
-echo ""
 
-# Update index.html
-echo "📝 Update index.html..."
-# Finde Position vor </main>
+# Geloeschte Bilder entfernen
+for img in "${REMOVED_IMAGES[@]}"; do
+    rm "$REPO_IMAGES/$img"
+    echo "Geloescht: $img"
+done
+
+# index.html updaten
 TEMP_FILE=$(mktemp)
-MAIN_END_FOUND=false
+SKIP_BLOCK=false
 
 while IFS= read -r line; do
+
+    # Pruefe ob Zeile ein geloeschtes Bild referenziert
+    for img in "${REMOVED_IMAGES[@]}"; do
+        if [[ "$line" == *"images/$img"* ]]; then
+            SKIP_BLOCK=true
+        fi
+    done
+
+    # Wenn im Skip-Block: ueberspringe bis </figure>
+    if [ "$SKIP_BLOCK" = true ]; then
+        if [[ "$line" == *"</figure>"* ]]; then
+            SKIP_BLOCK=false
+        fi
+        continue
+    fi
+
+    # Neue Bilder vor </main> einfuegen
     if [[ "$line" =~ \</main\> ]]; then
-        # Füge neue figure Blöcke vor </main> ein
         for img in "${NEW_IMAGES[@]}"; do
             echo "        <figure>" >> "$TEMP_FILE"
             echo "            <img src=\"images/$img\" alt=\"\">" >> "$TEMP_FILE"
             echo "        </figure>" >> "$TEMP_FILE"
             echo "" >> "$TEMP_FILE"
         done
-        MAIN_END_FOUND=true
     fi
+
     echo "$line" >> "$TEMP_FILE"
+
 done < "$INDEX_HTML"
 
-if [ "$MAIN_END_FOUND" = false ]; then
-    echo "❌ Fehler: </main> Tag nicht gefunden in index.html"
-    rm "$TEMP_FILE"
-    exit 1
-fi
-
-# Ersetze Original
 mv "$TEMP_FILE" "$INDEX_HTML"
-echo "   ✓ ${#NEW_IMAGES[@]} <figure> Block(s) hinzugefügt"
 echo ""
+echo "index.html aktualisiert"
 
 # Git commit & push
-echo "🔄 Git Commit & Push..."
 git add images/ index.html
 
-# Erstelle Commit-Message
-if [ ${#NEW_IMAGES[@]} -eq 1 ]; then
-    COMMIT_MSG="Neues Bild: ${NEW_IMAGES[0]}"
-else
-    COMMIT_MSG="Neue Bilder: ${NEW_IMAGES[*]}"
-fi
+PARTS=()
+if [ ${#NEW_IMAGES[@]} -gt 0 ]; then PARTS+=("+ ${NEW_IMAGES[*]}"); fi
+if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then PARTS+=("- ${REMOVED_IMAGES[*]}"); fi
+COMMIT_MSG=$(IFS='; '; echo "${PARTS[*]}")
 
 git commit -m "$COMMIT_MSG"
+git pull --rebase origin main 2>/dev/null || true
 git push "$REMOTE" "$BRANCH"
 
 echo ""
-echo "✨ Sync abgeschlossen!"
-echo "🌐 Webseite aktualisiert in ~1-2 Minuten"
+echo "Sync abgeschlossen! Webseite aktualisiert in ~1-2 Minuten."
 echo ""
