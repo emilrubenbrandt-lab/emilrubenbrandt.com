@@ -95,7 +95,7 @@ NEW_FILE=$(mktemp)
 for img in "${REMOVED_IMAGES[@]}"; do echo "$img" >> "$REMOVED_FILE"; done
 for img in "${NEW_IMAGES[@]}"; do echo "$img" >> "$NEW_FILE"; done
 
-# index.html updaten via Python
+# index.html updaten via Python - REMOVE ALL FIGURES, THEN ADD ONLY UNIQUE IMAGES
 python3 << PYEOF
 import re
 import os
@@ -113,15 +113,17 @@ with open(new_path) as f:
 with open(html_path, encoding="utf-8") as f:
     content = f.read()
 
-# Entferne ganzen <figure>...</figure> Block fuer jedes geloeschte Bild
-for img in removed:
-    pattern = r'[ \t]*<figure>.*?images/' + re.escape(img) + r'.*?</figure>[ \t]*\n?'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
+# Entferne ALLE <figure> Bloecke, nicht nur einzelne
+pattern = r'[ \t]*<figure>.*?</figure>[ \t]*\n?'
+content = re.sub(pattern, '', content, flags=re.DOTALL)
 
-# Fuege neue <figure> Bloecke VOR </main> ein
+# Fuege neue <figure> Bloecke VOR </main> ein (nur unique Images)
 new_figures = ""
+seen = set()
 for img in new_imgs:
-    new_figures += f'        <figure>\n            <img src="images/{img}" alt="">\n        </figure>\n'
+    if img not in seen:  # Prevent duplicates
+        new_figures += f'        <figure>\n            <img src="images/{img}" alt="">\n        </figure>\n'
+        seen.add(img)
 
 # Ersetze </main> mit neuen Bildern + </main>
 if new_figures:
@@ -130,13 +132,13 @@ if new_figures:
 with open(html_path, "w", encoding="utf-8") as f:
     f.write(content)
 
-print("index.html aktualisiert")
+print("index.html aktualisiert (Duplikate entfernt)")
 PYEOF
 
 rm "$REMOVED_FILE" "$NEW_FILE"
 
 # Git commit & push
-git add -A  # Adds all changes including new images
+git add -A
 
 if ! git diff --cached --quiet; then
     PARTS=()
