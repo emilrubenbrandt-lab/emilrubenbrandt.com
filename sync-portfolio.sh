@@ -16,11 +16,24 @@ echo ""
 echo "Portfolio Sync gestartet..."
 echo ""
 
+# Error handling
+set -e
+trap 'echo "Fehler bei der Synchronisierung!"; exit 1' ERR
+
 if [ ! -d "$DRIVE_IMAGES" ]; then
     echo "Fehler: Google Drive Ordner nicht gefunden:"
     echo "   $DRIVE_IMAGES"
     exit 1
 fi
+
+if [ ! -d "$REPO_PATH" ]; then
+    echo "Fehler: Repository-Ordner nicht gefunden:"
+    echo "   $REPO_PATH"
+    exit 1
+fi
+
+# Create images directory if it doesn't exist
+mkdir -p "$REPO_IMAGES"
 
 cd "$REPO_PATH"
 
@@ -63,10 +76,14 @@ if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then
     echo ""
 fi
 
-# Neue Bilder kopieren
+# Neue Bilder kopieren (mit Fehlerbehandlung)
 for img in "${NEW_IMAGES[@]}"; do
-    cp "$DRIVE_IMAGES/$img" "$REPO_IMAGES/$img"
-    echo "Kopiert: $img"
+    if [ -f "$DRIVE_IMAGES/$img" ]; then
+        cp "$DRIVE_IMAGES/$img" "$REPO_IMAGES/$img" || { echo "Fehler beim Kopieren von $img"; exit 1; }
+        echo "Kopiert: $img"
+    else
+        echo "Warnung: $img nicht mehr in Drive vorhanden, übersprungen"
+    fi
 done
 
 # Geloeschte Bilder entfernen
@@ -84,6 +101,7 @@ for img in "${NEW_IMAGES[@]}"; do echo "$img" >> "$NEW_FILE"; done
 # index.html updaten via Python (block-basiert, entfernt ganzen <figure> Block inkl. Titel)
 python3 << PYEOF
 import re
+import os
 
 html_path = "$INDEX_HTML"
 removed_path = "$REMOVED_FILE"
@@ -118,18 +136,41 @@ PYEOF
 
 rm "$REMOVED_FILE" "$NEW_FILE"
 
-# Git commit & push
-git add images/ index.html
+# Git commit & push mit besserer Fehlerbehandlung
+if [ ${#NEW_IMAGES[@]} -gt 0 ]; then
+    git add "${NEW_IMAGES[@]/#/$REPO_IMAGES/}"
+fi
 
-PARTS=()
-if [ ${#NEW_IMAGES[@]} -gt 0 ]; then PARTS+=("+ ${NEW_IMAGES[*]}"); fi
-if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then PARTS+=("- ${REMOVED_IMAGES[*]}"); fi
-COMMIT_MSG=$(IFS='; '; echo "${PARTS[*]}")
+if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then
+    git add "${REMOVED_IMAGES[@]/#/$REPO_IMAGES/}" || true
+fi
 
-git commit -m "$COMMIT_MSG"
-git pull --rebase origin main 2>/dev/null || true
-git push "$REMOTE" "$BRANCH"
+git add index.html
+
+# Nur committen wenn es Änderungen gibt
+if ! git diff --cached --quiet; then
+    PARTS=()
+    if [ ${#NEW_IMAGES[@]} -gt 0 ]; then PARTS+=("+ ${#NEW_IMAGES[@]} Bilder hinzugefügt"); fi
+    if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then PARTS+=("- ${#REMOVED_IMAGES[@]} Bilder entfernt"); fi
+    COMMIT_MSG=$(IFS='; '; echo "${PARTS[*]}")
+    
+    git commit -m "$COMMIT_MSG" || { echo "Nichts zu committen"; exit 0; }
+    
+    # Pull rebase vor push
+    if ! git pull --rebase origin main 2>&1; then
+        echo "Fehler beim Pull-Rebase. Bitte manuell prüfen."
+        exit 1
+    fi
+    
+    # Push mit Fehlerbehandlung
+    if ! git push "$REMOTE" "$BRANCH"; then
+        echo "Fehler beim Push. Bitte manuell prüfen."
+        exit 1
+    fi
+else
+    echo "Keine Änderungen zu committen."
+fi
 
 echo ""
-echo "Sync abgeschlossen! Webseite aktualisiert in ~1-2 Minuten."
+echo "✓ Sync abgeschlossen! Webseite aktualisiert in ~1-2 Minuten."
 echo ""
