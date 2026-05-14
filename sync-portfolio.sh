@@ -5,7 +5,7 @@
 # Fuegt neue Bilder hinzu, entfernt geloeschte Bilder (inkl. Titel)
 #
 
-DRIVE_IMAGES="$HOME/Library/CloudStorage/GoogleDrive-emilrubenbrandt@gmail.com/Meine Ablage/emilrubenbrandt.com/images"
+DRIVE_IMAGES="$HOME/Google Drive/Meine Ablage/emilrubenbrandt.com/images"
 REPO_PATH="$HOME/Portfolio-Repo"
 REPO_IMAGES="$REPO_PATH/images"
 INDEX_HTML="$REPO_PATH/index.html"
