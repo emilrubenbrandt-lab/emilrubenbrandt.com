@@ -94,8 +94,7 @@ footer {
     }
 
     figure img[data-format="portrait"] {
-        max-width: 90vw;
-        max-height: none;
+        max-height: 85vh;
         width: auto;
     }
 
