@@ -25,10 +25,6 @@ header p {
     letter-spacing: 0.02em;
 }
 
-header p.small {
-    font-size: 14px;
-}
-
 a {
     color: #000000;
     text-decoration: none;
@@ -43,9 +39,8 @@ a:hover {
 }
 
 main {
-    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 5vw 10vh;
+    padding: 0 0 10vh;
 }
 
 figure {
@@ -54,16 +49,12 @@ figure {
 }
 
 figure img {
-    width: 100%;
-    height: auto;
     display: block;
     margin: 0 auto;
-}
-
-/* Hochformat-Bilder: max-height statt max-width für Desktop */
-figure img[data-format="portrait"] {
-    max-height: 85vh;
     width: auto;
+    height: auto;
+    max-width: 90%;
+    max-height: 85vh;
 }
 
 figcaption {
@@ -79,7 +70,6 @@ footer {
     font-size: 14px;
 }
 
-/* Mobile: Bilder nutzen volle Breite mit Rändern */
 @media (max-width: 768px) {
     header {
         padding: 6vh 8vw;
@@ -93,12 +83,12 @@ footer {
         margin: 8vh 0;
     }
 
-    figure img[data-format="portrait"] {
+    figure img {
+        max-width: 90%;
         max-height: 85vh;
-        width: auto;
     }
 
     main {
-        padding: 0 8vw 8vh;
+        padding: 0 0 8vh;
     }
 }
