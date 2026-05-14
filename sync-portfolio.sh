@@ -2,7 +2,7 @@
 #
 # Portfolio Sync Script
 # Synct Bilder von Google Drive -> GitHub Portfolio
-# Fuegt neue Bilder hinzu, entfernt geloeschte Bilder
+# Fuegt neue Bilder hinzu, entfernt geloeschte Bilder (inkl. Titel)
 #
 
 DRIVE_IMAGES="$HOME/Library/CloudStorage/GoogleDrive-emilrubenbrandt@gmail.com/Meine Ablage/emilrubenbrandt.com/images"
@@ -75,44 +75,48 @@ for img in "${REMOVED_IMAGES[@]}"; do
     echo "Geloescht: $img"
 done
 
-# index.html updaten
-TEMP_FILE=$(mktemp)
-SKIP_BLOCK=false
+# Schreibe Listen in Temp-Dateien fuer Python
+REMOVED_FILE=$(mktemp)
+NEW_FILE=$(mktemp)
+for img in "${REMOVED_IMAGES[@]}"; do echo "$img" >> "$REMOVED_FILE"; done
+for img in "${NEW_IMAGES[@]}"; do echo "$img" >> "$NEW_FILE"; done
 
-while IFS= read -r line; do
+# index.html updaten via Python (block-basiert, entfernt ganzen <figure> Block inkl. Titel)
+python3 << PYEOF
+import re
 
-    # Pruefe ob Zeile ein geloeschtes Bild referenziert
-    for img in "${REMOVED_IMAGES[@]}"; do
-        if [[ "$line" == *"images/$img"* ]]; then
-            SKIP_BLOCK=true
-        fi
-    done
+html_path = "$INDEX_HTML"
+removed_path = "$REMOVED_FILE"
+new_path = "$NEW_FILE"
 
-    # Wenn im Skip-Block: ueberspringe bis </figure>
-    if [ "$SKIP_BLOCK" = true ]; then
-        if [[ "$line" == *"</figure>"* ]]; then
-            SKIP_BLOCK=false
-        fi
-        continue
-    fi
+with open(removed_path) as f:
+    removed = [l.strip() for l in f if l.strip()]
 
-    # Neue Bilder vor </main> einfuegen
-    if [[ "$line" =~ \</main\> ]]; then
-        for img in "${NEW_IMAGES[@]}"; do
-            echo "        <figure>" >> "$TEMP_FILE"
-            echo "            <img src=\"images/$img\" alt=\"\">" >> "$TEMP_FILE"
-            echo "        </figure>" >> "$TEMP_FILE"
-            echo "" >> "$TEMP_FILE"
-        done
-    fi
+with open(new_path) as f:
+    new_imgs = [l.strip() for l in f if l.strip()]
 
-    echo "$line" >> "$TEMP_FILE"
+with open(html_path, encoding="utf-8") as f:
+    content = f.read()
 
-done < "$INDEX_HTML"
+# Entferne ganzen <figure>...</figure> Block fuer jedes geloeschte Bild
+for img in removed:
+    pattern = r'[ \t]*<figure>.*?images/' + re.escape(img) + r'.*?</figure>[ \t]*\n?'
+    content = re.sub(pattern, '', content, flags=re.DOTALL)
 
-mv "$TEMP_FILE" "$INDEX_HTML"
-echo ""
-echo "index.html aktualisiert"
+# Fuege neue <figure> Bloecke vor </main> ein
+new_figures = ""
+for img in new_imgs:
+    new_figures += f'        <figure>\n            <img src="images/{img}" alt="">\n        </figure>\n\n'
+
+content = content.replace("    </main>", new_figures + "    </main>")
+
+with open(html_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("index.html aktualisiert")
+PYEOF
+
+rm "$REMOVED_FILE" "$NEW_FILE"
 
 # Git commit & push
 git add images/ index.html
