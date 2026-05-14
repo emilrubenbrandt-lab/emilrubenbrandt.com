@@ -25,6 +25,16 @@ header p {
     letter-spacing: 0.02em;
 }
 
+a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid #000000;
+}
+
+a:hover {
+    opacity: 0.5;
+}
+
 main {
     max-width: 1400px;
     margin: 0 auto;
@@ -61,15 +71,15 @@ footer {
     header {
         padding: 6vh 8vw;
     }
-    
+
     header p {
         font-size: 14px;
     }
-    
+
     figure {
         margin: 8vh 0;
     }
-    
+
     main {
         padding: 0 8vw 8vh;
     }
