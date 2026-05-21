@@ -20,8 +20,27 @@ header {
     margin: 0 auto;
 }
 
+header h1,
 header p {
+    margin: 0;
     font-size: 16px;
+    font-weight: normal;
+    font-style: normal;
+}
+
+header h1 {
+    margin-bottom: 10px;
+}
+
+header p:nth-of-type(1) { /* Hanau, Hesse, Germany */
+    margin-bottom: 35px;
+}
+
+header p:nth-of-type(2) { /* Thanks for stopping by... */
+    margin-bottom: 10px;
+}
+
+header p {
     letter-spacing: 0.02em;
 }
 
