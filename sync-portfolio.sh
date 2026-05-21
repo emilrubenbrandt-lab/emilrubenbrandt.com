@@ -4,6 +4,7 @@
 # Synct Bilder von Google Drive -> GitHub Portfolio
 # Fuegt neue Bilder hinzu, entfernt geloeschte Bilder (inkl. Titel)
 # Erzeugt automatisch WebP-Varianten neben jedem JPG fuer schnellere Ladezeiten
+# WebP-Konvertierung via Python+Pillow (keine externe Binary noetig)
 #
 
 DRIVE_IMAGES="$HOME/Library/CloudStorage/GoogleDrive-emilrubenbrandt@gmail.com/Meine Ablage/emilrubenbrandt.com/images"
@@ -24,9 +25,9 @@ if [ ! -d "$DRIVE_IMAGES" ]; then
     exit 1
 fi
 
-if ! command -v cwebp >/dev/null 2>&1; then
-    echo "Fehler: cwebp ist nicht installiert."
-    echo "   Installieren mit: brew install webp"
+if ! python3 -c 'from PIL import Image' >/dev/null 2>&1; then
+    echo "Fehler: Pillow (Python-Bibliothek fuer WebP) ist nicht installiert."
+    echo "   Installieren mit: python3 -m pip install --user Pillow"
     exit 1
 fi
 
@@ -72,20 +73,16 @@ if [ ${#REMOVED_IMAGES[@]} -gt 0 ]; then
     echo ""
 fi
 
-# Neue Bilder kopieren + WebP-Variante daneben erzeugen
+# Neue Bilder ins Repo kopieren (WebP-Konvertierung passiert spaeter in Python)
 for img in "${NEW_IMAGES[@]}"; do
     cp "$DRIVE_IMAGES/$img" "$REPO_IMAGES/$img"
-    base="${img%.*}"
-    cwebp -q $WEBP_QUALITY "$REPO_IMAGES/$img" -o "$REPO_IMAGES/${base}.webp" >/dev/null 2>&1
-    echo "Kopiert + WebP: $img"
+    echo "Kopiert: $img"
 done
 
-# Geloeschte Bilder + ihre WebP-Varianten entfernen
+# Geloeschte JPGs aus Repo entfernen (WebP-Loeschung passiert spaeter in Python)
 for img in "${REMOVED_IMAGES[@]}"; do
     rm -f "$REPO_IMAGES/$img"
-    base="${img%.*}"
-    rm -f "$REPO_IMAGES/${base}.webp"
-    echo "Geloescht: $img (+webp)"
+    echo "Geloescht: $img"
 done
 
 # Schreibe Listen in Temp-Dateien fuer Python
@@ -94,32 +91,50 @@ NEW_FILE=$(mktemp)
 for img in "${REMOVED_IMAGES[@]}"; do echo "$img" >> "$REMOVED_FILE"; done
 for img in "${NEW_IMAGES[@]}"; do echo "$img" >> "$NEW_FILE"; done
 
-# index.html updaten via Python
-# Block-basiert: entfernt kompletten <figure> Block inkl. <picture> und Titel
-INDEX_HTML="$INDEX_HTML" REMOVED_FILE="$REMOVED_FILE" NEW_FILE="$NEW_FILE" python3 << 'PYEOF'
-import re
+# Python: WebP-Varianten erzeugen/loeschen + index.html updaten
+INDEX_HTML="$INDEX_HTML" REPO_IMAGES="$REPO_IMAGES" REMOVED_FILE="$REMOVED_FILE" NEW_FILE="$NEW_FILE" WEBP_QUALITY=$WEBP_QUALITY python3 << 'PYEOF'
 import os
+import re
+from PIL import Image
 
 html_path = os.environ['INDEX_HTML']
+repo_images = os.environ['REPO_IMAGES']
 removed_path = os.environ['REMOVED_FILE']
 new_path = os.environ['NEW_FILE']
+quality = int(os.environ['WEBP_QUALITY'])
 
 with open(removed_path) as f:
     removed = [l.strip() for l in f if l.strip()]
-
 with open(new_path) as f:
     new_imgs = [l.strip() for l in f if l.strip()]
 
+# WebP-Variante fuer jedes neue Bild erzeugen (volle Originalaufloesung beibehalten)
+for img in new_imgs:
+    src = os.path.join(repo_images, img)
+    base, _ = os.path.splitext(img)
+    dst = os.path.join(repo_images, base + '.webp')
+    with Image.open(src) as im:
+        im.save(dst, 'WEBP', quality=quality)
+    print(f'WebP: {base}.webp')
+
+# WebP-Variante fuer jedes geloeschte Bild entfernen (falls vorhanden)
+for img in removed:
+    base, _ = os.path.splitext(img)
+    webp_path = os.path.join(repo_images, base + '.webp')
+    if os.path.exists(webp_path):
+        os.remove(webp_path)
+        print(f'WebP geloescht: {base}.webp')
+
+# HTML aktualisieren
 with open(html_path, encoding='utf-8') as f:
     content = f.read()
 
 # Entferne ganzen <figure>...</figure> Block fuer jedes geloeschte Bild
-# Pattern matched <figure> bis </figure>, mit irgendwo darin images/FILENAME
 for img in removed:
     pattern = r'[ \t]*<figure>.*?images/' + re.escape(img) + r'.*?</figure>[ \t]*\n?'
     content = re.sub(pattern, '', content, flags=re.DOTALL)
 
-# Fuege neue <figure>-Bloecke vor </main> ein (mit <picture>, WebP-Source und lazy loading)
+# Fuege neue <figure>-Bloecke vor </main> ein
 new_figures = ''
 for img in new_imgs:
     base, _ = os.path.splitext(img)
