@@ -32,11 +32,13 @@ header h1 {
     margin-bottom: 10px;
 }
 
-header p:nth-of-type(1) { /* Hanau, Hesse, Germany */
+/* Hanau, Hesse, Germany */
+header p:nth-of-type(1) {
     margin-bottom: 35px;
 }
 
-header p:nth-of-type(2) { /* Thanks for stopping by... */
+/* Thanks for stopping by... */
+header p:nth-of-type(2) {
     margin-bottom: 10px;
 }
 
