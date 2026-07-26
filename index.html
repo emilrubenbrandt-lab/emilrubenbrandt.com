@@ -4,17 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emil Ruben Brandt</title>
+    <meta property="og:title" content="Emil Ruben Brandt">
+    <meta property="og:url" content="https://www.emilrubenbrandt.com/">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
+        <h1>Analogfotografie – Emil Ruben Brandt</h1>
+        <p>Hanau, Hesse, Germany</p>
+        <p>Thanks for stopping by. Take a look around and stumble upon something that resonates with you. If you'd like to share some feedback or want to get in touch, feel free to message me:</p>
+        <p><a href="mailto:emilrubenbrandt@gmail.com">emilrubenbrandt@gmail.com</a></p>
     </header>
     <main>
+        <figure>
+            <picture>
+                <source type="image/webp" srcset="images/selfx.webp">
+                <img src="images/selfx.jpg" loading="lazy" alt="">
+            </picture>
+        </figure>
     </main>
     <footer>
-        <p><a href="mailto:emilrubenbrandt@gmail.com">emilrubenbrandt@gmail.com</a></p>
         <p>© Emil Ruben Brandt</p>
     </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const images = document.querySelectorAll('figure img');
+            images.forEach(img => {
+                const checkFormat = () => {
+                    const ratio = img.naturalWidth / img.naturalHeight;
+                    if (ratio > 1) {
+                        img.dataset.format = 'landscape';
+                    } else {
+                        img.dataset.format = 'portrait';
+                    }
+                };
+                if (img.complete) {
+                    checkFormat();
+                } else {
+                    img.addEventListener('load', checkFormat);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
